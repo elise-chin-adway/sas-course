@@ -12,7 +12,13 @@
     - [Import Files](#import-files)
 - [Variables](#variables)
 - [Character functions](#character-functions)
-- [Formats](#formats)
+- [Formats, informats, custom formats](#formats-informats-custom-formats)
+    - [Formats](#formats)
+    - [Informats](#informats)
+    - [Custom formats](#custom-formats)
+- [Program Data Vector](#program-data-vector)
+- [Explicit Output](#explicit-output)
+- [Loops](#loops)
 
 ## SAS Dataset
 
@@ -386,8 +392,160 @@ run;
 - `compress`: remove all and in-between spaces
     - '  United States of America  ' -> 'UnitedStatesofAmerica'
 
-## Formats
+## Formats, informats, custom formats
+
+### Formats
+Formatting is making a numeric value appear more meaningful. Doesn't actually change raw values.
+
+Ex: 75 -> $75.00
+
+Format name :  `FORMATx.y` where x is the total number of characters, and y the decimal places.
+- `DOLLAR10.2`
+- `COMMA8.2`
+- `SSN11.`: Social Security Number
+- `DATE9.`
+- `IS8601DA.`
+
+Two ways of formatting:
+- **Formal statement**: remains numeric.
+    ```SAS
+    data salary;
+    input name $ salary id;
+    format salary dollar10.2 id ssn11;
+    cards;
+    John 55000 145233421
+    ;
+    run;
+    ```
+
+- Put function: creates new char variable. `New var = put(var.name, format_name);`
+
+    ```SAS
+    data salary;
+    input name $ salary id;
+    cards;
+    John 55000 145233421
+    ;
+    run;
+
+    data salary1;
+        set salary;
+        salarytxt = put(salary, dollar10.2);
+        idtxt = put(id, ssn11.);
+    run;
+    ```
+
+### Informats
+Informats work on pre-existing formats in raw data. Results in underlying numeric values.
+
+Ex: $75.00 -> 75
+
+
+Informat name :  `INFORMATx.y` where x is the total number of characters of the formatted data, and y the decimal places.
+- `DOLLAR10.2`
+- `COMMA8.2`
+- `DATE9.`
+- `MMDDYY10.`
+
+Two ways of informatting:
+- **Informat statement**
+    ```SAS
+    data bonus;
+    input name $ bonus dob;
+    informat bonus dollar5. dob date7.;
+    cards;
+    John $5500 20Apr80    
+    ;
+    run;
+    ```
+- **Put function**
+
+
+### Custom formats
+```SAS
+proc format;
+value genfmt *incoming numeric value;
+1='Male'
+2='Female';
+run;
+```
 
 ```SAS
+proc format;
+value $genfmt *incoming char value;
+'M'='Male'
+'F'='Female';
+run;
+```
 
+- Use custom format instead of if-else statement
+```SAS
+proc format;
+value bmi
+low-18='Healthy'
+18-21='Overweight'
+21-high='Obese';
+run;
+
+data class;
+    set sashelp.class;
+
+    weightkg = weight * 0.454;
+    heightm = height * 2.54/100;
+    bmi = weightkg/(heightm*heightm);
+    status = put(bmi, bmi.); *bmi. to indicate format;
+run;
+```
+
+## Program Data Vector
+
+```SAS
+data class;
+    set sashelp.class;
+
+weightkg = weight * 0.454;
+run;
+```
+What is happening when we run this program code?
+1. SAS creates a **Program Data Vector**. It is a space in memory created temporaly to process the code.
+2. **Descriptor portion** creation: The SASHELP class dataset is copied in the WORK library. 
+    - Variables in the original dataset are copied one by one
+    - **Automatic variables** created in the background and that we do not see in the final dataset
+        - `_N_`: row count
+        - `_ERROR_`(0 or 1): indicates an error has occurred or not
+    - New variable is created
+3. **Data portion** creation: row by row
+    - Data content is copied for the original variables
+    - Data of the new variable is computed
+    - Values of automatic variables is completed
+        - Error is division by 0 for example
+
+## Explicit output
+To create >= 2 observations
+```SAS
+data class;
+    set sashelp.class;
+    weightkg = 
+    heightm = 
+
+    bmi = weightkg / (heightm * heightm);
+    output;
+    bmi = weight / (height * height);
+    output;
+run;
+```
+So here we will have, for each obs in the original dataset, two observations in the copied dataset with different bmi values.
+
+## Loops
+```SAS
+data myTable;
+
+do i = 1 to 10;
+    x = i;
+    y = i;
+    output;
+end;
+
+drop i;
+run;
 ```
